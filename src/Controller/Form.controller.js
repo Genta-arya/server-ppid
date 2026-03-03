@@ -205,7 +205,7 @@ ${tujuanPenggunaan}
 Segera lakukan verifikasi dan tindak lanjut.
 
 🔗 Cek Detail:
-https://beta-ppid-kab-sekadau.vercel.app/status/ticket?id=${ticketNumber}`,
+https://beta-ppid-kab-sekadau.vercel.app/ticket?id=${ticketNumber}`,
     );
 
     // ==============================
@@ -267,7 +267,7 @@ https://beta-ppid-kab-sekadau.vercel.app/status/ticket?id=${ticketNumber}`,
               <!-- BUTTON MERAH -->
               <div style="text-align:center;margin-bottom:24px;">
                 <a 
-                  href="https://beta-ppid-kab-sekadau.vercel.app/status/ticket?id=${ticketNumber}" 
+                  href="https://beta-ppid-kab-sekadau.vercel.app/ticket?id=${ticketNumber}" 
                   style="background:#900D0D;color:#ffffff;text-decoration:none;padding:12px 28px;border-radius:6px;font-size:14px;display:inline-block;">
                   Cek Status Pengajuan
                 </a>
