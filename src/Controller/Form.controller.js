@@ -179,7 +179,7 @@ export const PostForm = async (req, res) => {
 
     const noAdmin = await prisma.dataAdmin.findFirst();
 
-    sendWhatsapp(
+    await sendWhatsapp(
       noAdmin.noHp,
       `🔔 NOTIFIKASI PERMOHONAN PPID BARU
 
@@ -215,7 +215,7 @@ https://beta-ppid-kab-sekadau.vercel.app/ticket?id=${ticketNumber}`,
     // 🔥 SEND EMAIL NOTIFICATION
     // ==============================
 
-    sendEmail(
+    await sendEmail(
       email,
       "Nomor Registrasi Permohonan PPID",
       `
