@@ -68,6 +68,7 @@ export const DownloadFile = async (req, res) => {
 
 export const PostForm = async (req, res) => {
   console.log("FONNTE:", process.env.FONNTE_TOKEN);
+  // 
   console.log("MAIL_USER:", process.env.MAIL_USER);
   try {
     const {
