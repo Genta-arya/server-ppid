@@ -1,0 +1,93 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model DataAdmin {
+  id    String @id @default(uuid())
+  noHp  String
+  email String @unique
+}
+
+model Analytic {
+  id         String   @id @default(uuid())
+  ip         String?
+  userAgent  String?
+  latitude   Float?
+  longitude  Float?
+  device_id  String
+  time_stamp DateTime @default(now())
+
+  createdAt DateTime @default(now())
+
+  @@index([device_id])
+}
+
+model Ticket {
+  id String @id @default(uuid())
+
+  type JenisLayanan
+
+  ticketNumber String @unique
+
+  jenisPemohon JenisPemohon
+  nama         String
+  email        String
+  telepon      String
+  pendidikan   String
+  pekerjaan    String
+  alamat       String
+
+  jenisIdentitas JenisIdentitas
+  nomorIdentitas String
+
+  rincianInformasi String @db.Text
+  tujuanPenggunaan String @db.Text
+
+  dokumenUrl  String?
+  dokumenName String?
+
+  status       StatusTicket?
+  catatanAdmin String?       @db.Text
+
+  agree     Boolean @default(false)
+  ipAddress String?
+  userAgent String?
+  deviceId  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([email])
+  @@index([type])
+  @@index([status])
+  @@index([createdAt])
+}
+
+enum JenisLayanan {
+  PERMINTAAN_INFORMASI
+  KEBERATAN
+}
+
+enum StatusTicket {
+  DIPROSES
+  SELESAI
+  DITOLAK
+}
+
+enum JenisPemohon {
+  PERORANGAN
+  KELOMPOK_ORANG
+  BADAN_HUKUM
+}
+
+enum JenisIdentitas {
+  KTP
+  SIM
+  PASPOR
+  SURAT_KUASA
+}
