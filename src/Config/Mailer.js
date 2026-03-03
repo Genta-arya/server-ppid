@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer";
+import { sendResponse } from "../Utils/Response.js";
 
 const transporter = nodemailer.createTransport({
   host: "mail.kpu-sekadau.my.id",
@@ -20,7 +21,9 @@ export const sendEmail = async (to, subject, html) => {
     });
 
     console.log("Email sent successfully");
+    sendResponse(null, 200, "Email sent successfully");
   } catch (error) {
     console.log("Email Error:", error.message);
+    sendResponse(null, 500, "Failed to send email");
   }
 };
