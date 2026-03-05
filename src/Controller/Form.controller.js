@@ -68,7 +68,7 @@ export const DownloadFile = async (req, res) => {
 
 export const PostForm = async (req, res) => {
   console.log("FONNTE:", process.env.FONNTE_TOKEN);
-  // 
+  //
   console.log("MAIL_USER:", process.env.MAIL_USER);
   try {
     const {
@@ -80,6 +80,7 @@ export const PostForm = async (req, res) => {
       pendidikan,
       pekerjaan,
       alamat,
+      caraMemperoleh,
       jenisIdentitas,
       nomorIdentitas,
       rincianInformasi,
@@ -98,6 +99,7 @@ export const PostForm = async (req, res) => {
       telepon,
       pendidikan,
       pekerjaan,
+      caraMemperoleh,
       alamat,
       jenisIdentitas,
       nomorIdentitas,
@@ -162,6 +164,7 @@ export const PostForm = async (req, res) => {
         pekerjaan,
         alamat,
         jenisIdentitas,
+        caraMemperoleh,
         nomorIdentitas,
         rincianInformasi,
         tujuanPenggunaan,
@@ -197,6 +200,9 @@ ${email}
 
 📱 Telepon:
 ${telepon}
+
+🔎 cara Memperoleh Informasi:
+${caraMemperoleh}
 
 📝 Rincian Informasi:
 ${rincianInformasi}
@@ -266,6 +272,23 @@ https://beta-ppid-kab-sekadau.vercel.app/ticket?id=${ticketNumber}`,
                   ${ticketNumber}
                 </p>
               </div>
+
+              <table width="100%" cellpadding="6" style="font-size:14px;margin-bottom:20px;">
+  <tr>
+    <td width="200"><strong>Cara Memperoleh Informasi</strong></td>
+    <td>: ${caraMemperoleh || "-"}</td>
+  </tr>
+
+  <tr>
+    <td><strong>Rincian Informasi</strong></td>
+    <td>: ${rincianInformasi}</td>
+  </tr>
+
+  <tr>
+    <td><strong>Tujuan Penggunaan</strong></td>
+    <td>: ${tujuanPenggunaan}</td>
+  </tr>
+</table>
 
               <!-- BUTTON MERAH -->
               <div style="text-align:center;margin-bottom:24px;">

@@ -45,6 +45,8 @@ model Ticket {
   jenisIdentitas JenisIdentitas
   nomorIdentitas String
 
+  caraMemperoleh CaraMemperolehInformasi?
+
   rincianInformasi String @db.Text
   tujuanPenggunaan String @db.Text
 
@@ -90,4 +92,10 @@ enum JenisIdentitas {
   SIM
   PASPOR
   SURAT_KUASA
+}
+
+enum CaraMemperolehInformasi {
+  EMAIL
+  WHATSAPP
+  AMBIL_DI_KANTOR
 }
