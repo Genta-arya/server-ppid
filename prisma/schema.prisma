@@ -27,6 +27,16 @@ model Analytic {
   @@index([device_id])
 }
 
+model AiInsight {
+  id        String   @id @default(uuid())
+  cacheKey  String?  @unique
+  status    Boolean  @default(false)
+  insight   Json
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
+
 model Ticket {
   id String @id @default(uuid())
 
@@ -61,8 +71,9 @@ model Ticket {
   userAgent String?
   deviceId  String?
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  respondedAt DateTime?
 
   @@index([email])
   @@index([type])

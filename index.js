@@ -2,7 +2,8 @@ import express from "express";
 import { createServer } from "http";
 import cors from "cors";
 import webRoutes from "./web.js";
-
+import dotenv from "dotenv";
+dotenv.config();
 const app = express();
 const PORT = 8080;
 const httpServer = createServer(app);

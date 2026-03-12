@@ -5,6 +5,7 @@ import { sendWhatsapp } from "../Config/WhatsApp.js";
 import { google } from "googleapis";
 
 import { sendError, sendResponse } from "../Utils/Response.js";
+import pusher from "../Config/Pusher.js";
 
 const auth = new google.auth.GoogleAuth({
   credentials: {
@@ -331,6 +332,18 @@ https://beta-ppid-kab-sekadau.vercel.app/ticket?id=${ticketNumber}`,
   `,
     );
 
+    try {
+      await pusher.trigger("admin-notification", "new-permohonan", {
+        message: `Ada permohonan ${type.toLowerCase()} baru dari ${nama}`,
+        ticketNumber: ticketNumber,
+        nama: nama,
+        type: type,
+      });
+      console.log("Pusher: Notifikasi admin berhasil dikirim.");
+    } catch (error) {
+      console.error("Pusher Error:", error);
+    }
+
     return sendResponse(res, 201, "Form data submitted successfully", {
       ticketNumber: newTicket.ticketNumber,
     });
@@ -354,5 +367,90 @@ export const GetDetailForm = async (req, res) => {
   } catch (error) {
     console.log("GetDetailForm Error:", error);
     return sendError(res, error, "Failed to retrieve form data");
+  }
+};
+
+export const GetAllForm = async (req, res) => {
+  // Tambahkan page dan limit dari query, beri nilai default
+  const { type, status, date, page = 1, limit = 10 } = req.query;
+
+  const pageNum = parseInt(page);
+  const limitNum = parseInt(limit);
+  const skip = (pageNum - 1) * limitNum;
+
+  if (!type) {
+    return sendError(res, null, "Type parameter is required", 400);
+  }
+
+  try {
+    const filters = { type: type };
+
+    if (status && status.toUpperCase() !== "ALL") {
+      filters.status = status.toUpperCase() === "BELUM" ? null : status;
+    }
+
+    if (date && date.toUpperCase() !== "ALL") {
+      const startDate = new Date(date);
+      if (!isNaN(startDate.getTime())) {
+        startDate.setHours(0, 0, 0, 0);
+        const endDate = new Date(date);
+        endDate.setHours(23, 59, 59, 999);
+        filters.createdAt = { gte: startDate, lte: endDate };
+      }
+    }
+
+    // Ambil data dengan pagination dan hitung total sekaligus
+    const [forms, totalData] = await Promise.all([
+      prisma.ticket.findMany({
+        where: filters,
+        skip: skip,
+        take: limitNum,
+        orderBy: { createdAt: "desc" },
+      }),
+      prisma.ticket.count({ where: filters }),
+    ]);
+
+    const totalPages = Math.ceil(totalData / limitNum);
+
+    return sendResponse(res, 200, "Form data retrieved successfully", {
+      data: forms,
+      pagination: {
+        totalData,
+        totalPages,
+        currentPage: pageNum,
+        limit: limitNum,
+        totalData: totalData,
+      },
+    });
+  } catch (error) {
+    console.log("GetAllForm Error:", error);
+    return sendError(res, error, "Failed to retrieve form data");
+  }
+};
+
+export const updateStatus = async (req, res) => {
+  try {
+    const { id, status } = req.body;
+    const statusValue = typeof status === "object" ? status.status : status;
+    const form = await prisma.ticket.update({
+      where: { id: id },
+      data: { status: statusValue, respondedAt: new Date() },
+    });
+    return sendResponse(res, 200, "Form data updated successfully", form);
+  } catch (error) {
+    console.log("updateStatus Error:", error);
+    return sendError(res, error, "Failed to update form data");
+  }
+};
+
+export const deleteForm = async (req, res) => {
+  try {
+    const { id } = req.body;
+    console.log(id);
+    const form = await prisma.ticket.delete({ where: { id: id } });
+    return sendResponse(res, 200, "Form data deleted successfully", form);
+  } catch (error) {
+    console.log("deleteForm Error:", error);
+    return sendError(res, error, "Failed to delete form data");
   }
 };
