@@ -81,6 +81,15 @@ model Ticket {
   @@index([createdAt])
 }
 
+model Notification {
+  id           String       @id @default(uuid())
+  message      String
+  ticketNumber String
+  type         JenisLayanan
+  isRead       Boolean      @default(false)
+  createdAt    DateTime     @default(now())
+}
+
 enum JenisLayanan {
   PERMINTAAN_INFORMASI
   KEBERATAN

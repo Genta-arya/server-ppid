@@ -6,6 +6,7 @@ import { google } from "googleapis";
 
 import { sendError, sendResponse } from "../Utils/Response.js";
 import pusher from "../Config/Pusher.js";
+import { sendSSEntNotification } from "./SSE.js";
 
 const auth = new google.auth.GoogleAuth({
   credentials: {
@@ -332,16 +333,53 @@ https://beta-ppid-kab-sekadau.vercel.app/ticket?id=${ticketNumber}`,
   `,
     );
 
+    // try {
+    //   // 1. Simpan ke Database dulu
+    //   const newNotif = await prisma.notification.create({
+    //     data: {
+    //       message: `Ada permohonan ${type.toLowerCase()} baru dari ${nama}`,
+    //       ticketNumber: ticketNumber,
+    //       type: type,
+    //     },
+    //   });
+
+    //   // 2. Kirim ke Pusher (Gunakan data dari DB agar ID-nya sinkron)
+    //   await pusher.trigger("admin-notification", "new-permohonan", {
+    //     id: newNotif.id, // ID asli dari DB
+    //     message: newNotif.message,
+    //     ticketNumber: newNotif.ticketNumber,
+    //     type: newNotif.type,
+    //     createdAt: newNotif.createdAt,
+    //   });
+
+    //   console.log("Notifikasi disimpan dan dikirim via Pusher.");
+    // } catch (error) {
+    //   console.error("Gagal memproses notifikasi:", error);
+    // }
+
     try {
-      await pusher.trigger("admin-notification", "new-permohonan", {
-        message: `Ada permohonan ${type.toLowerCase()} baru dari ${nama}`,
-        ticketNumber: ticketNumber,
-        nama: nama,
-        type: type,
+      // 1. Simpan ke Database (Tetap sama)
+      const newNotif = await prisma.notification.create({
+        data: {
+          message: `Ada permohonan ${type === "PERMINTAAN_INFORMASI" ? "Permohonan Informasi" : "Pengajuan Keberatan"} baru dari ${nama}`,
+          ticketNumber: ticketNumber,
+          type: type,
+        },
       });
-      console.log("Pusher: Notifikasi admin berhasil dikirim.");
+
+      // 2. Kirim ke SSE (Ganti Pusher)
+      // Kita panggil fungsi helper yang mengirimkan data ke semua admin yang sedang online
+      sendSSEntNotification({
+        id: newNotif.id,
+        message: newNotif.message,
+        ticketNumber: newNotif.ticketNumber,
+        type: newNotif.type,
+        createdAt: newNotif.createdAt,
+      });
+
+      console.log("Notifikasi disimpan dan disiarkan via SSE.");
     } catch (error) {
-      console.error("Pusher Error:", error);
+      console.error("Gagal memproses notifikasi:", error);
     }
 
     return sendResponse(res, 201, "Form data submitted successfully", {
