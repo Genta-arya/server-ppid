@@ -13,6 +13,16 @@ model DataAdmin {
   email String @unique
 }
 
+model Log {
+  id String @id @default(uuid())
+  id_user String?
+  username String?
+  action String?
+  message String?
+  TicketId String?
+  createdAt DateTime @default(now())
+}
+
 model Analytic {
   id         String   @id @default(uuid())
   ip         String?

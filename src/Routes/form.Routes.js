@@ -3,6 +3,7 @@ import {
   deleteForm,
   DownloadFile,
   GetAllForm,
+  GetAllLog,
   GetDetailForm,
   PostForm,
   updateStatus,
@@ -16,5 +17,6 @@ routerForm.get("/file/download", DownloadFile);
 routerForm.get("/all", GetAllForm);
 routerForm.put("/update/status", updateStatus);
 routerForm.post("/delete", deleteForm);
+routerForm.get("/log", GetAllLog);
 
 export default routerForm;
