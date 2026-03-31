@@ -421,13 +421,10 @@ export const GetDetailForm = async (req, res) => {
 };
 
 export const GetAllForm = async (req, res) => {
-  // Tambahkan page dan limit dari query, beri nilai default
+  // Ambil query parameters
   const { type, status, date, page = 1, limit = 10 } = req.query;
 
-  const pageNum = parseInt(page);
-  const limitNum = parseInt(limit);
-  const skip = (pageNum - 1) * limitNum;
-
+  // Cek parameter wajib
   if (!type) {
     return sendError(res, null, "Type parameter is required", 400);
   }
@@ -435,10 +432,12 @@ export const GetAllForm = async (req, res) => {
   try {
     const filters = { type: type };
 
+    // 1. Logika Filter Status
     if (status && status.toUpperCase() !== "ALL") {
       filters.status = status.toUpperCase() === "BELUM" ? null : status;
     }
 
+    // 2. Logika Filter Tanggal
     if (date && date.toUpperCase() !== "ALL") {
       const startDate = new Date(date);
       if (!isNaN(startDate.getTime())) {
@@ -449,27 +448,36 @@ export const GetAllForm = async (req, res) => {
       }
     }
 
-    // Ambil data dengan pagination dan hitung total sekaligus
+    // 3. Logika Pagination "ALL"
+    // Jika limit dikirim sebagai "all" atau angka sangat besar dari frontend (seperti 9999)
+    const isExportAll = limit === "all" || parseInt(limit) >= 9000;
+
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    const skip = isExportAll ? undefined : (pageNum - 1) * limitNum;
+    const take = isExportAll ? undefined : limitNum;
+
+    // 4. Eksekusi Database
     const [forms, totalData] = await Promise.all([
       prisma.ticket.findMany({
         where: filters,
-        skip: skip,
-        take: limitNum,
+        skip: skip, // Jika undefined, Prisma akan mengabaikan skip
+        take: take, // Jika undefined, Prisma akan mengambil semua data
         orderBy: { createdAt: "desc" },
       }),
       prisma.ticket.count({ where: filters }),
     ]);
 
-    const totalPages = Math.ceil(totalData / limitNum);
+    // Hitung total halaman (jika export all, total page jadi 1)
+    const totalPages = isExportAll ? 1 : Math.ceil(totalData / limitNum);
 
     return sendResponse(res, 200, "Form data retrieved successfully", {
       data: forms,
       pagination: {
         totalData,
         totalPages,
-        currentPage: pageNum,
-        limit: limitNum,
-        totalData: totalData,
+        currentPage: isExportAll ? 1 : pageNum,
+        limit: isExportAll ? totalData : limitNum,
       },
     });
   } catch (error) {
@@ -502,20 +510,36 @@ export const updateStatus = async (req, res) => {
       username = null,
     } = req.body;
 
-    // Handle jika status dikirim dalam bentuk object atau string
-    const statusValue = typeof status === "object" ? status.status : status;
+    console.log("UpdateStatus Payload:", req.body);
 
-    // 1. Update Database
+    // 1. Ekstraksi Status dan Data Bukti
+    const isStatusObject = typeof status === "object";
+    const statusValue = isStatusObject ? status.status : status;
+    const buktiUrl = isStatusObject ? status.dokumenUrl : null;
+    const buktiName = isStatusObject ? status.dokumenName : null;
+
+    // 2. Siapkan Objek Data untuk Prisma
+    const updateData = {
+      status: statusValue,
+      catatanAdmin: catatan,
+      respondedAt: new Date(),
+    };
+
+    if (statusValue === "SELESAI") {
+      if (buktiUrl) updateData.buktiTerima = buktiUrl;
+      if (buktiName) updateData.buktiTerimaName = buktiName;
+    } else {
+      updateData.buktiTerima = null;
+      updateData.buktiTerimaName = null;
+    }
+
+    // 3. Update Database
     const form = await prisma.ticket.update({
       where: { id: id },
-      data: {
-        status: statusValue,
-        catatanAdmin: catatan,
-        respondedAt: new Date(),
-      },
+      data: updateData,
     });
 
-    // 2. Destructuring Data dari hasil update
+    // 4. Ambil Data untuk Notifikasi
     const {
       email,
       nama,
@@ -524,22 +548,36 @@ export const updateStatus = async (req, res) => {
       rincianInformasi,
       tujuanPenggunaan,
       catatanAdmin,
+      buktiTerima,
     } = form;
 
     const statusTerpilih = MAP_STATUS_USER[statusValue] || statusValue;
     const teksCaraMemperoleh = MAP_CARA_MEMPEROLEH[caraMemperoleh] || "-";
 
-    // 3. Logika Pesan Dinamis #TemanPemilih
-    let pesanTambahan = "";
+    // 5. Logika Pesan Dinamis & Penanganan Bukti
+    let deskripsiStatus = "";
+    let htmlBukti = "";
+
     if (statusValue === "DIPROSES") {
-      pesanTambahan = `Halo <strong>#TemanPemilih</strong>, permohonan informasi Anda saat ini sedang dalam tahap verifikasi dan pengolahan data oleh tim kami. Mohon kesediaannya untuk menunggu proses lebih lanjut.`;
+      deskripsiStatus = `Permohonan PPID Anda sedang dalam tahap verifikasi dan pengolahan data oleh tim kami.`;
     } else if (statusValue === "SELESAI") {
-      pesanTambahan = `Halo <strong>#TemanPemilih</strong>, permohonan informasi Anda telah selesai diproses. Dokumen atau informasi yang Anda minta akan kami teruskan dengan cara: <strong>${teksCaraMemperoleh}</strong>.`;
+      deskripsiStatus = `Permohonan informasi Anda telah <strong>SELESAI</strong> diproses. Informasi akan disampaikan sesuai pilihan Anda yaitu melalui: <strong>${teksCaraMemperoleh}</strong>.`;
+
+      if (buktiTerima) {
+        htmlBukti = `
+          <div style="margin-top: 20px; padding: 15px; border: 1px solid #e2e8f0; border-radius: 8px; background-color: #f8fafc; text-align: center;">
+            <p style="margin: 0 0 10px 0; font-size: 12px; color: #64748b; font-weight: bold; text-transform: uppercase;">Lampiran Bukti / Dokumen:</p>
+            <a href="${buktiTerima}" style="color: #900D0D; font-weight: bold; text-decoration: none; font-size: 14px; border-bottom: 2px solid #900D0D;">
+               Klik Untuk Lihat Dokumen Informasi
+            </a>
+          </div>`;
+      }
     } else if (statusValue === "DITOLAK") {
-      pesanTambahan = `Halo <strong>#TemanPemilih</strong>, mohon maaf, permohonan Anda belum dapat kami penuhi saat ini karena alasan berikut: <br/> <em style="color: #dc2626; font-weight: bold;">"${catatanAdmin || "Terdapat ketidaksesuaian data pada berkas yang dikirimkan."}"</em>`;
+      deskripsiStatus = `Mohon maaf, permohonan Anda belum dapat dipenuhi karena alasan berikut: <br/> 
+      <em style="color: #dc2626; font-weight: bold;">"${catatanAdmin || "Terdapat ketidaksesuaian data pada berkas."}"</em>`;
     }
 
-    // 4. Kirim Email
+    // 6. Kirim Email dengan Template Konsisten
     if (isNotif) {
       await sendEmail(
         email,
@@ -553,62 +591,55 @@ export const updateStatus = async (req, res) => {
                   <tr>
                     <td style="background:#900D0D;padding:28px;text-align:center;">
                       <img src="https://sekadaukabppid.kpu.go.id/img/logo.png" alt="Logo KPU" width="80" style="display:block;margin:0 auto 12px auto;" />
-                      <h1 style="margin:0;font-size:20px;color:#ffffff;letter-spacing:1px;">Sistem Pelayanan PPID</h1>
-                      <p style="margin:6px 0 0 0;font-size:14px;color:#f3f4f6;">KPU Kabupaten Sekadau</p>
+                      <h1 style="margin:0;font-size:20px;color:#ffffff;">Sistem Pelayanan PPID</h1>
+                      <p style="margin:6px 0 0 0;font-size:14px;color:#f3f4f6;">Komisi Pemilihan Umum Kabupaten Sekadau</p>
                     </td>
                   </tr>
-  
+
                   <tr>
-                    <td style="padding:32px;color:#374151;font-size:15px;line-height:1.6;">
+                    <td style="padding:32px;color:#374151;font-size:14px;line-height:1.6;">
                       <p style="margin:0 0 16px 0;">Yth. <strong>${nama}</strong>,</p>
-                      
-                      <div style="text-align:center; margin: 30px 0; padding: 20px; border: 1px dashed #d1d5db; border-radius: 8px;">
-                        <p style="margin:0; color:#6b7280; font-size:12px; text-transform:uppercase; letter-spacing:2px;">Status Permohonan</p>
-                        <p style="margin:8px 0 0 0; color:#900D0D; font-size:20px; font-weight:bold;">
-                          "${statusTerpilih.toUpperCase()}"
-                        </p>
+                      <p style="margin:0 0 20px 0;">${deskripsiStatus}</p>
+
+                      <div style="background:#fff5f5;padding:18px;border-radius:8px;text-align:center;margin-bottom:28px;border:1px solid #f3d1d1;">
+                        <p style="margin:0;font-size:11px;color:#7f1d1d;font-weight:bold;text-transform:uppercase;letter-spacing:1px;">STATUS SAAT INI</p>
+                        <p style="margin:10px 0 0 0;font-size:22px;font-weight:bold;color:#900D0D;">${statusTerpilih.toUpperCase()}</p>
+                        <p style="margin:5px 0 0 0;font-size:12px;color:#6b7280;">No. Tiket: ${ticketNumber}</p>
                       </div>
-  
-                      <div style="background:#fff7ed; padding:20px; border-radius:8px; margin-bottom:25px; border-left:4px solid #f97316; color: #7c2d12;">
-                         ${pesanTambahan}
-                      </div>
-  
-                      <div style="background:#f3f4f6;padding:18px;border-radius:8px;text-align:center;margin-bottom:28px;">
-                        <p style="margin:0;font-size:11px;color:#6b7280;text-transform:uppercase;">Nomor Registrasi</p>
-                        <p style="margin:5px 0 0 0;font-size:22px;font-weight:bold;color:#111827;">${ticketNumber}</p>
-                      </div>
-  
-                      <table width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;margin-bottom:20px; color:#4b5563;">
+
+                      ${htmlBukti}
+
+                      <table width="100%" cellpadding="6" style="font-size:13px;margin-top:20px;">
                         <tr>
-                          <td style="padding: 12px 0; border-bottom: 1px solid #f3f4f6;">
+                          <td style="padding-top: 15px;">
                             <strong>Rincian Informasi:</strong><br />
-                            <div style="margin-top: 4px; color: #1f2937;">${rincianInformasi}</div>
+                            <div style="margin-top: 5px; color: #4b5563;">${rincianInformasi}</div>
                           </td>
                         </tr>
                         <tr>
-                          <td style="padding: 12px 0;">
+                          <td style="padding-top: 10px;">
                             <strong>Tujuan Penggunaan:</strong><br />
-                            <div style="margin-top: 4px; color: #1f2937;">${tujuanPenggunaan}</div>
+                            <div style="margin-top: 5px; color: #4b5563;">${tujuanPenggunaan}</div>
                           </td>
                         </tr>
                       </table>
-  
+
                       <div style="text-align:center;margin:30px 0;">
                         <a href="https://beta-ppid-kab-sekadau.vercel.app/ticket?id=${ticketNumber}" 
-                           style="background:#900D0D;color:#ffffff;text-decoration:none;padding:14px 30px;border-radius:6px;font-size:14px;display:inline-block;font-weight:bold;box-shadow:0 4px 6px rgba(0,0,0,0.1);">
-                          Pantau Progress Permohonan
+                           style="background:#900D0D;color:#ffffff;text-decoration:none;padding:12px 28px;border-radius:6px;font-size:14px;display:inline-block;font-weight:bold;">
+                           Cek Status Pengajuan
                         </a>
                       </div>
-                      
-                      <p style="margin:0;">Salam hormat,<br/><strong>Tim PPID KPU Kabupaten Sekadau</strong></p>
-                      <p style="margin:10px 0 0 0; color:#900D0D; font-weight:bold;">#TemanPemilih</p>
+
+                      <p style="margin:0;">Hormat kami,<br/><strong>Tim PPID KPU Kabupaten Sekadau</strong></p>
+                      <p style="margin:5px 0 0 0; color:#900D0D; font-weight:bold;">#TemanPemilih</p>
                     </td>
                   </tr>
-  
+
                   <tr>
-                    <td style="background:#f9fafb;padding:20px;text-align:center;font-size:12px;color:#9ca3af; border-top: 1px solid #f3f4f6;">
-                      &copy; ${new Date().getFullYear()} KPU Kabupaten Sekadau. <br/>
-                      Alamat: Jl. Merdeka Barat, Sekadau, Kalimantan Barat.
+                    <td style="background:#f9fafb;padding:16px;text-align:center;font-size:11px;color:#9ca3af;">
+                      Email ini dikirim secara otomatis oleh Sistem PPID KPU Kabupaten Sekadau. <br/>
+                      &copy; ${new Date().getFullYear()} KPU Sekadau. Mohon tidak membalas email ini.
                     </td>
                   </tr>
                 </table>
@@ -619,24 +650,24 @@ export const updateStatus = async (req, res) => {
         `,
       );
     }
-    // catat log
+
+    // 7. Log Aktivitas
     await prisma.log.create({
       data: {
         id_user: id_user,
         username: username,
         TicketId: form.ticketNumber,
         action: `Update status permohonan`,
-        message: `Update status permohonan ${ticketNumber} menjadi ${statusTerpilih}`,
+        message: `Update status ${ticketNumber} menjadi ${statusTerpilih}`,
       },
     });
 
-    return sendResponse(res, 200, "Update status permohonan berhasil", form);
+    return sendResponse(res, 200, "Update status berhasil", form);
   } catch (error) {
     console.error("updateStatus Error:", error);
-    return sendError(res, error, "Gagal memperbarui status permohonan");
+    return sendError(res, error, "Gagal memperbarui status");
   }
 };
-
 export const deleteForm = async (req, res) => {
   try {
     const { id } = req.body;

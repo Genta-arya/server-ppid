@@ -73,6 +73,10 @@ model Ticket {
   dokumenUrl  String?
   dokumenName String?
 
+
+  buktiTerima String?
+  buktiTerimaName String?
+
   status       StatusTicket?
   catatanAdmin String?       @db.Text
 
