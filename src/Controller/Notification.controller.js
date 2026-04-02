@@ -52,3 +52,36 @@ export const readAll = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+export const getAccountNotifications = async (req, res) => {
+  try {
+    const response = await prisma.dataAdmin.findMany({});
+
+    sendResponse(
+      res,
+      200,
+      "Account notifications retrieved successfully",
+      response,
+    );
+  } catch (error) {
+    console.log("getAccountNotifications Error:", error);
+    sendError(res, error, "Failed to retrieve account notifications");
+  }
+};
+
+export const updateAccountAdmin = async (req, res) => {
+  const { id } = req.params;
+  const { noHp } = req.body;
+  if (!id) {
+    return sendError(res, null, "ID parameter is required", 400);
+  }
+  try {
+    await prisma.dataAdmin.update({
+      where: { id: id },
+      data: { noHp: noHp },
+    });
+    sendResponse(res, 200, "Account admin updated successfully");
+  } catch (err) {
+    sendError(res, err, "Failed to update account admin");
+  }
+};

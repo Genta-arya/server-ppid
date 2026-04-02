@@ -682,27 +682,39 @@ export const deleteForm = async (req, res) => {
 
 export const GetAllLog = async (req, res) => {
   try {
-    const response = await prisma.log.findMany();
-    // buat paginasi
-    const { page = 1, limit = 10 } = req.query;
-    const pageNum = parseInt(page);
-    const limitNum = parseInt(limit);
-    const skip = (pageNum - 1) * limitNum;
-    const total = await prisma.log.count();
-    const totalPages = Math.ceil(total / limitNum);
-    const hasPrevPage = pageNum > 1;
-    const hasNextPage = pageNum < totalPages;
-    const prevPage = hasPrevPage ? pageNum - 1 : null;
-    const nextPage = hasNextPage ? pageNum + 1 : null;
+    // 1. Ambil query parameter dan konversi ke integer
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    
+    // 2. Hitung jumlah data yang harus dilewati (offset)
+    const skip = (page - 1) * limit;
+
+    // 3. Jalankan query secara paralel untuk efisiensi (opsional tapi disarankan)
+    const [response, total] = await Promise.all([
+      prisma.log.findMany({
+        skip: skip,      // Melewati data sebelumnya
+        take: limit,     // Mengambil jumlah data sesuai limit
+        orderBy: {
+          createdAt: 'desc', // Biasanya log ingin melihat yang terbaru dulu
+        },
+      }),
+      prisma.log.count(), // Menghitung total seluruh record
+    ]);
+
+    // 4. Logika Paginasi
+    const totalPages = Math.ceil(total / limit);
+    const hasPrevPage = page > 1;
+    const hasNextPage = page < totalPages;
+
     const pagination = {
-      page: pageNum,
-      limit: limitNum,
-      total,
-      totalPages,
-      hasPrevPage,
-      hasNextPage,
-      prevPage,
-      nextPage,
+      page: page,
+      limit: limit,
+      total: total,
+      totalPages: totalPages,
+      hasPrevPage: hasPrevPage,
+      hasNextPage: hasNextPage,
+      prevPage: hasPrevPage ? page - 1 : null,
+      nextPage: hasNextPage ? page + 1 : null,
     };
 
     return sendResponse(res, 200, "Log data retrieved successfully", {
@@ -711,6 +723,7 @@ export const GetAllLog = async (req, res) => {
     });
   } catch (error) {
     console.log("GetAllLog Error:", error);
-    sendError(res, error, "Failed to retrieve form data");
+    // Pastikan sendError sudah terdefinisi di helper kamu
+    sendError(res, error, "Failed to retrieve log data");
   }
 };

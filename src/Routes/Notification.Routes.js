@@ -1,7 +1,7 @@
 
 
 import { Router } from "express";
-import { deleteAll, getNotification, markAsRead, readAll } from "../Controller/Notification.controller.js";
+import { deleteAll, getAccountNotifications, getNotification, markAsRead, readAll, updateAccountAdmin } from "../Controller/Notification.controller.js";
 import { notificationStream } from "../Controller/SSE.js";
 
 
@@ -12,4 +12,6 @@ notifRouter.get("/stream" , notificationStream)
 notifRouter.post("/read-all", readAll)
 notifRouter.post("/delete-all", deleteAll)
 notifRouter.post("/mark-as-read/:id", markAsRead)
+notifRouter.get("/account-notifications", getAccountNotifications)
+notifRouter.put("/update/account-notifications/:id", updateAccountAdmin)
 export default notifRouter;
