@@ -421,10 +421,9 @@ export const GetDetailForm = async (req, res) => {
 };
 
 export const GetAllForm = async (req, res) => {
-  // Ambil query parameters
-  const { type, status, date, page = 1, limit = 10 } = req.query;
+  // 1. Tambahkan 'year' di destructuring query
+  const { type, status, date, year, page = 1, limit = 10 } = req.query;
 
-  // Cek parameter wajib
   if (!type) {
     return sendError(res, null, "Type parameter is required", 400);
   }
@@ -432,12 +431,12 @@ export const GetAllForm = async (req, res) => {
   try {
     const filters = { type: type };
 
-    // 1. Logika Filter Status
+    // Logika Filter Status
     if (status && status.toUpperCase() !== "ALL") {
       filters.status = status.toUpperCase() === "BELUM" ? null : status;
     }
 
-    // 2. Logika Filter Tanggal
+    // 2. Logika Filter TANGGAL SPESIFIK (Harian)
     if (date && date.toUpperCase() !== "ALL") {
       const startDate = new Date(date);
       if (!isNaN(startDate.getTime())) {
@@ -446,30 +445,38 @@ export const GetAllForm = async (req, res) => {
         endDate.setHours(23, 59, 59, 999);
         filters.createdAt = { gte: startDate, lte: endDate };
       }
+    } 
+    // 3. Logika Filter TAHUNAN (Hanya jalan jika filter harian tidak ada)
+    else if (year && year.toUpperCase() !== "ALL") {
+      const targetYear = parseInt(year);
+      if (!isNaN(targetYear)) {
+        const startOfYear = new Date(targetYear, 0, 1); // 1 Jan pukul 00:00
+        const endOfYear = new Date(targetYear, 11, 31, 23, 59, 59, 999); // 31 Des pukul 23:59
+        
+        filters.createdAt = {
+          gte: startOfYear,
+          lte: endOfYear
+        };
+      }
     }
 
-    // 3. Logika Pagination "ALL"
-    // Jika limit dikirim sebagai "all" atau angka sangat besar dari frontend (seperti 9999)
+    // Logika Pagination "ALL"
     const isExportAll = limit === "all" || parseInt(limit) >= 9000;
-
     const pageNum = parseInt(page);
-    const limitNum = parseInt(limit);
+    const limitNum = isExportAll ? undefined : parseInt(limit);
     const skip = isExportAll ? undefined : (pageNum - 1) * limitNum;
-    const take = isExportAll ? undefined : limitNum;
 
-    // 4. Eksekusi Database
     const [forms, totalData] = await Promise.all([
       prisma.ticket.findMany({
         where: filters,
-        skip: skip, // Jika undefined, Prisma akan mengabaikan skip
-        take: take, // Jika undefined, Prisma akan mengambil semua data
+        skip: skip,
+        take: isExportAll ? undefined : limitNum,
         orderBy: { createdAt: "desc" },
       }),
       prisma.ticket.count({ where: filters }),
     ]);
 
-    // Hitung total halaman (jika export all, total page jadi 1)
-    const totalPages = isExportAll ? 1 : Math.ceil(totalData / limitNum);
+    const totalPages = isExportAll ? 1 : Math.ceil(totalData / (limitNum || 1));
 
     return sendResponse(res, 200, "Form data retrieved successfully", {
       data: forms,
@@ -485,7 +492,6 @@ export const GetAllForm = async (req, res) => {
     return sendError(res, error, "Failed to retrieve form data");
   }
 };
-
 // --- MAPPING HELPERS ---
 const MAP_STATUS_USER = {
   DIPROSES: "Sedang Diproses",
