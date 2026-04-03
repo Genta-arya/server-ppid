@@ -32,7 +32,7 @@ const limiter = rateLimit({
   legacyHeaders: false,
 });
 // Terapkan limiter pada semua route API
-app.use("/api/", limiter);
+app.use("/api", limiter);
 
 // 4. Konfigurasi CORS Ketat & Dinamis
 const allowedOrigins = [
