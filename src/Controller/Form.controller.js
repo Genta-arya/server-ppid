@@ -222,7 +222,7 @@ ${tujuanPenggunaan}
 Segera lakukan verifikasi dan tindak lanjut.
 
 🔗 Cek Detail:
-https://beta-ppid-kab-sekadau.vercel.app/ticket?id=${ticketNumber}`,
+https://eppid.kpu-sekadau.my.id/ticket?id=${ticketNumber}`,
     );
 
     // ==============================
@@ -307,7 +307,7 @@ https://beta-ppid-kab-sekadau.vercel.app/ticket?id=${ticketNumber}`,
               <!-- BUTTON MERAH -->
               <div style="text-align:center;margin-bottom:24px;">
                 <a 
-                  href="https://beta-ppid-kab-sekadau.vercel.app/ticket?id=${ticketNumber}" 
+                  href="https://eppid.kpu-sekadau.my.id/ticket?id=${ticketNumber}" 
                   style="background:#900D0D;color:#ffffff;text-decoration:none;padding:12px 28px;border-radius:6px;font-size:14px;display:inline-block;">
                   Cek Status Pengajuan
                 </a>
@@ -445,17 +445,17 @@ export const GetAllForm = async (req, res) => {
         endDate.setHours(23, 59, 59, 999);
         filters.createdAt = { gte: startDate, lte: endDate };
       }
-    } 
+    }
     // 3. Logika Filter TAHUNAN (Hanya jalan jika filter harian tidak ada)
     else if (year && year.toUpperCase() !== "ALL") {
       const targetYear = parseInt(year);
       if (!isNaN(targetYear)) {
         const startOfYear = new Date(targetYear, 0, 1); // 1 Jan pukul 00:00
         const endOfYear = new Date(targetYear, 11, 31, 23, 59, 59, 999); // 31 Des pukul 23:59
-        
+
         filters.createdAt = {
           gte: startOfYear,
-          lte: endOfYear
+          lte: endOfYear,
         };
       }
     }
@@ -631,7 +631,7 @@ export const updateStatus = async (req, res) => {
                       </table>
 
                       <div style="text-align:center;margin:30px 0;">
-                        <a href="https://beta-ppid-kab-sekadau.vercel.app/ticket?id=${ticketNumber}" 
+                        <a href="https://eppid.kpu-sekadau.my.id/ticket?id=${ticketNumber}" 
                            style="background:#900D0D;color:#ffffff;text-decoration:none;padding:12px 28px;border-radius:6px;font-size:14px;display:inline-block;font-weight:bold;">
                            Cek Status Pengajuan
                         </a>
@@ -679,6 +679,9 @@ export const deleteForm = async (req, res) => {
     const { id } = req.body;
     console.log(id);
     const form = await prisma.ticket.delete({ where: { id: id } });
+
+    // catat log
+
     return sendResponse(res, 200, "Form data deleted successfully", form);
   } catch (error) {
     console.log("deleteForm Error:", error);
@@ -691,17 +694,17 @@ export const GetAllLog = async (req, res) => {
     // 1. Ambil query parameter dan konversi ke integer
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
-    
+
     // 2. Hitung jumlah data yang harus dilewati (offset)
     const skip = (page - 1) * limit;
 
     // 3. Jalankan query secara paralel untuk efisiensi (opsional tapi disarankan)
     const [response, total] = await Promise.all([
       prisma.log.findMany({
-        skip: skip,      // Melewati data sebelumnya
-        take: limit,     // Mengambil jumlah data sesuai limit
+        skip: skip, // Melewati data sebelumnya
+        take: limit, // Mengambil jumlah data sesuai limit
         orderBy: {
-          createdAt: 'desc', // Biasanya log ingin melihat yang terbaru dulu
+          createdAt: "desc", // Biasanya log ingin melihat yang terbaru dulu
         },
       }),
       prisma.log.count(), // Menghitung total seluruh record
