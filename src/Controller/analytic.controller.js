@@ -621,3 +621,19 @@ export const GetAIInsightStatus = async (req, res) => {
     return res.status(500).json({ ready: false, error: err.message });
   }
 };
+
+export const GetAllDataAnalytic = async (req, res) => {
+  try {
+    // ambil total data ticket
+    const totalTicket = await prisma.ticket.count();
+    // ambil total data analytic
+    const totalAnalytic = await prisma.analytic.count();
+    sendResponse(res, 200, "Total data analytic", {
+      totalTicket,
+      totalAnalytic,
+    });
+  } catch (error) {
+    console.log("GetAllDataAnalytic Error:", error);
+    return sendError(res, error, "Failed to fetch all analytic data");
+  }
+};
